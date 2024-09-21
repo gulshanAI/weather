@@ -5,11 +5,18 @@ from datetime import timedelta
 import pytz
 from django.db.models import OuterRef, Subquery
 from django.db.models.functions import TruncHour
+from django.utils.text import slugify
 
 
 class City(models.Model):
     name = models.CharField(max_length=100)
     country = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100, unique=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super(City, self).save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name}, {self.country}"
@@ -33,12 +40,15 @@ class WeatherInfo(models.Model):
     gust = models.FloatField()
     icon = models.CharField(max_length=100)
     timestamp = models.DateTimeField(auto_now_add=True)
-    lastUpdated = models.DateTimeField()
+    lastUpdated = models.CharField(max_length=15)
     isExtreme = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Weather data for {self.city.name} at {self.timestamp}"
-
+    def save(self, *args, **kwargs):
+        self.timestamp = timezone.localtime(self.timestamp)
+        super(WeatherInfo, self).save(*args, **kwargs)
+        
     @classmethod
     def updateOrCreateWeatherInfo(cls, city, weatherData):
         lastUpdatedStr = weatherData['last_updated']

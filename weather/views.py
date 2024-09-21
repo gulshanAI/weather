@@ -1,5 +1,4 @@
 from django.shortcuts import render
-
 import requests
 from rest_framework import status
 from rest_framework.response import Response
@@ -22,13 +21,11 @@ class WeatherAPIView(APIView):
             city, created = City.objects.get_or_create(name=city, country=country)
             weatherInfo = WeatherInfo.updateOrCreateWeatherInfo(city, weatherData['current'])
 
-            analytics = WeatherInfo.getDataIntervals(city)
-
             return Response({
-                # "city": city.name,
-                # "country": city.country,
-                # "weather": weatherData,
-                "analytics": analytics
+                "city": city.name,
+                "citySlug": city.slug,
+                "country": city.country,
+                "weather":weatherData
             }, status=status_code)
 
         return Response(weatherData, status=status_code)
@@ -54,3 +51,13 @@ class UpdateSelfAPI(APIView):
                 print(f"Error updating weather data for {city.name}: {str(e)}")
             updatedList.append(cityStatus)
         return Response({"updated": updatedList}, status=status.HTTP_200_OK)
+
+class AnalyticsAPI(APIView):
+    def get(self, request, slug):
+        if not slug:
+            return Response({"error": "Please provide a location."}, status=status.HTTP_400_BAD_REQUEST)
+
+        city = City.objects.get(slug=slug)
+        analytics = WeatherInfo.getDataIntervals(city)
+
+        return Response(analytics)
