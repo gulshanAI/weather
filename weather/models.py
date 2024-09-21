@@ -2,6 +2,10 @@ from django.db import models
 from django.utils import timezone
 from datetime import datetime
 from datetime import timedelta
+import pytz
+from django.db.models import OuterRef, Subquery
+from django.db.models.functions import TruncHour
+
 
 class City(models.Model):
     name = models.CharField(max_length=100)
@@ -39,7 +43,9 @@ class WeatherInfo(models.Model):
     def updateOrCreateWeatherInfo(cls, city, weatherData):
         lastUpdatedStr = weatherData['last_updated']
         lastUpdated = datetime.strptime(lastUpdatedStr, '%Y-%m-%d %H:%M')
-        
+        lastUpdated = lastUpdated.replace(minute=0, second=0, microsecond=0)
+        lastUpdated = lastUpdated.strftime("%Y-%m-%d %H:%M")
+
         weatherInfo, created = cls.objects.get_or_create(
             city=city,
             lastUpdated=lastUpdated,
@@ -69,33 +75,40 @@ class WeatherInfo(models.Model):
         return weatherInfo
 
     @classmethod
-    def getDataIntervals(cls, city, intervalMin=15, totalHr=24):
+    def getDataIntervals(cls, city):
         now = timezone.now()
-        startTime = now - timedelta(hours=totalHr)
-        numIntervals = (totalHr * 60) // intervalMin
-
-        weather_records = cls.objects.filter(
-            city=city,
-            lastUpdated__range=[startTime, now]
-        ).order_by('lastUpdated')
-
-        intervals = []
-        for i in range(numIntervals):
-            interval_start = now - timedelta(minutes=intervalMin * (i + 1))
-            interval_end = now - timedelta(minutes=intervalMin * i)
-
-            records_in_interval = weather_records.filter(
-                lastUpdated__gte=interval_start,
-                lastUpdated__lt=interval_end
+        ist_timezone = pytz.timezone('Asia/Kolkata')
+        now = now.astimezone(ist_timezone)
+        startTime = now.replace(minute=0, second=0, microsecond=0)
+        endTime = startTime - timedelta(hours=24)
+        data =  cls.objects.filter(city=city, lastUpdated__range=(endTime, startTime)).order_by('lastUpdated')
+        print(data)
+        if data:
+            averages = data.aggregate(
+                temperature=models.Avg('temperature'),
+                humidity=models.Avg('humidity'),
+                windSpeed=models.Avg('windSpeed'),
+                windDir=models.Avg('windDir'),
+                condition=models.Avg('condition'),
+                pressure=models.Avg('pressure'),
+                feelsLike=models.Avg('feelsLike'),
+                precipitation=models.Avg('precipitation'),
+                cloud=models.Avg('cloud'),
+                windChill=models.Avg('windChill'),
+                heatIndex=models.Avg('heatIndex'),
+                dewPoint=models.Avg('dewPoint'),
+                visibility=models.Avg('visibility'),
+                uv=models.Avg('uv'),
+                gust=models.Avg('gust')
             )
-
-            intervals.append({
-                'interval_start': interval_start,
-                'interval_end': interval_end,
-                'data': records_in_interval
-            })
-
-        return intervals
+            return {
+                "report": list(data.values()),
+                "average": averages
+            }
+        return {
+            "report": [],
+            "average": {}
+        }
 
 class WeatherAlert(models.Model):
     city = models.ForeignKey(City, on_delete=models.CASCADE)

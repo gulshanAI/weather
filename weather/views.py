@@ -1,6 +1,4 @@
 from django.shortcuts import render
-from utils.helper import save_weather_data, calculate_temperature_trend, calculate_humidity_trend, check_extreme_weather
-
 
 import requests
 from rest_framework import status
@@ -27,9 +25,9 @@ class WeatherAPIView(APIView):
             analytics = WeatherInfo.getDataIntervals(city)
 
             return Response({
-                "city": city.name,
-                "country": city.country,
-                "weather": weatherData,
+                # "city": city.name,
+                # "country": city.country,
+                # "weather": weatherData,
                 "analytics": analytics
             }, status=status_code)
 
@@ -56,19 +54,3 @@ class UpdateSelfAPI(APIView):
                 print(f"Error updating weather data for {city.name}: {str(e)}")
             updatedList.append(cityStatus)
         return Response({"updated": updatedList}, status=status.HTTP_200_OK)
-
-
-
-def weather_report(request, city):
-    save_weather_data(city)
-    avg_temp = calculate_temperature_trend(city)
-    avg_humidity = calculate_humidity_trend(city)
-    alerts = check_extreme_weather(city)
-
-    context = {
-        'city': city,
-        'avg_temp': avg_temp,
-        'avg_humidity': avg_humidity,
-        'alerts': alerts,
-    }
-    return render(request, 'weather/weather_report.html', context)
