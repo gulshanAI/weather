@@ -29,9 +29,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-%eqnetqfy6go4b%=8eqc%)jf+!s*po)+51&lll3g676fb&en68'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS').split(',')
 
 
 # Application definition
@@ -150,9 +150,7 @@ WEATHER_API_KEY = os.getenv('WEATHER_API_KEY')
 TIME_ZONE = 'Asia/Kolkata'
 
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-]
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS').split(',')
 CORS_ALLOW_CREDENTIALS = False
 
 CORS_ALLOW_METHODS = [
