@@ -6,13 +6,18 @@ from rest_framework.views import APIView
 from django.conf import settings
 from utils.api import fetchWeatherApi
 from .models import City, WeatherInfo
-
+from .serializers import CitySerializer
 
 class WeatherAPIView(APIView):
     def get(self, request):
         location = request.query_params.get('location')
         if not location:
-            return Response({"error": "Please provide a location."}, status=status.HTTP_400_BAD_REQUEST)
+            ip_address = request.META.get('REMOTE_ADDR')
+            if ip_address:
+                ip_address = ip_address if ip_address != '127.0.0.1' else "Pune"
+                location = ip_address
+            else:
+                return Response({"error": "Please provide a location."}, status=status.HTTP_400_BAD_REQUEST)
         weatherData, status_code = fetchWeatherApi(location)
 
         if status_code == status.HTTP_200_OK:
@@ -53,11 +58,17 @@ class UpdateSelfAPI(APIView):
         return Response({"updated": updatedList}, status=status.HTTP_200_OK)
 
 class AnalyticsAPI(APIView):
-    def get(self, request, slug):
+    def get(self, request):
+        slug = request.query_params.get('slug')
         if not slug:
             return Response({"error": "Please provide a location."}, status=status.HTTP_400_BAD_REQUEST)
 
         city = City.objects.get(slug=slug)
         analytics = WeatherInfo.getDataIntervals(city)
-
         return Response(analytics)
+
+class CityWeatherAPIView(APIView):
+    def get(self, request):
+        cities = City.objects.all()
+        serializer = CitySerializer(cities, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
